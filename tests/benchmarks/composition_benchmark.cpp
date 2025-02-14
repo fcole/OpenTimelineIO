@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Contributors to the OpenTimelineIO project
 
+#define OPENTIMELINEIO_TEST
 #include "opentimelineio/composition.h"
 #include "opentimelineio/clip.h"
 #include "opentimelineio/errorStatus.h"
@@ -195,78 +196,79 @@ int64_t bisect_right_optimized_v4(
     return left;
 }
 
-// Helper to create test data
-static std::vector<otio::SerializableObject::Retainer<otio::Composable>> create_test_data(int n) {
-    std::vector<otio::SerializableObject::Retainer<otio::Composable>> data;
-    data.reserve(n);
-    for (int i = 0; i < n; i++) {
-        data.emplace_back(new otio::Clip());
+// Helper class to access protected methods
+namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
+
+class CompositionBenchmark {
+public:
+    static int64_t bisect_right(
+        Composition* comp,
+        RationalTime const& tgt,
+        std::function<RationalTime(Composable*)> const& key_func,
+        ErrorStatus* error_status,
+        std::optional<int64_t> lower_search_bound = 0,
+        std::optional<int64_t> upper_search_bound = std::nullopt) {
+        return comp->_bisect_right(tgt, key_func, error_status, lower_search_bound, upper_search_bound);
     }
-    return data;
+    
+    static int64_t bisect_left(
+        Composition* comp,
+        RationalTime const& tgt,
+        std::function<RationalTime(Composable*)> const& key_func,
+        ErrorStatus* error_status,
+        std::optional<int64_t> lower_search_bound = 0,
+        std::optional<int64_t> upper_search_bound = std::nullopt) {
+        return comp->_bisect_left(tgt, key_func, error_status, lower_search_bound, upper_search_bound);
+    }
+};
+
+}} // namespace opentimelineio::OPENTIMELINEIO_VERSION
+
+// Helper to create test data
+static otio::SerializableObject::Retainer<otio::Composition> create_test_composition(int n) {
+    auto comp = new otio::Composition();
+    std::vector<otio::Composable*> children;
+    children.reserve(n);
+    
+    for (int i = 0; i < n; i++) {
+        children.push_back(new otio::Clip());
+    }
+    
+    otio::ErrorStatus error_status;
+    comp->set_children(children, &error_status);
+    return comp;
 }
 
 // Benchmark functions
-static void BM_BisectRight_Original(benchmark::State& state) {
+static void BM_BisectRight_InPlace(benchmark::State& state) {
     const int n = state.range(0);
-    auto data = create_test_data(n);
+    auto comp = create_test_composition(n);
     otio::RationalTime target(n/2, 1);
     auto key_func = [](otio::Composable* c) { return otio::RationalTime(1, 1); };
     
     for (auto _ : state) {
         otio::ErrorStatus error_status;
-        benchmark::DoNotOptimize(bisect_right_original(data, target, key_func, &error_status, 0));
+        benchmark::DoNotOptimize(otio::CompositionBenchmark::bisect_right(comp.value, target, key_func, &error_status, 0));
     }
 }
 
-static void BM_BisectRight_Optimized_V2(benchmark::State& state) {
+static void BM_BisectLeft_InPlace(benchmark::State& state) {
     const int n = state.range(0);
-    auto data = create_test_data(n);
+    auto comp = create_test_composition(n);
     otio::RationalTime target(n/2, 1);
     auto key_func = [](otio::Composable* c) { return otio::RationalTime(1, 1); };
     
     for (auto _ : state) {
         otio::ErrorStatus error_status;
-        benchmark::DoNotOptimize(bisect_right_optimized_v2(data, target, key_func, &error_status, 0));
+        benchmark::DoNotOptimize(otio::CompositionBenchmark::bisect_left(comp.value, target, key_func, &error_status, 0));
     }
 }
 
-static void BM_BisectRight_Optimized_V3(benchmark::State& state) {
-    const int n = state.range(0);
-    auto data = create_test_data(n);
-    otio::RationalTime target(n/2, 1);
-    auto key_func = [](otio::Composable* c) { return otio::RationalTime(1, 1); };
-    
-    for (auto _ : state) {
-        otio::ErrorStatus error_status;
-        benchmark::DoNotOptimize(bisect_right_optimized_v3(data, target, key_func, &error_status, 0));
-    }
-}
-
-static void BM_BisectRight_Optimized_V4(benchmark::State& state) {
-    const int n = state.range(0);
-    auto data = create_test_data(n);
-    otio::RationalTime target(n/2, 1);
-    auto key_func = [](otio::Composable* c) { return otio::RationalTime(1, 1); };
-    
-    for (auto _ : state) {
-        otio::ErrorStatus error_status;
-        benchmark::DoNotOptimize(bisect_right_optimized_v4(data, target, key_func, &error_status, 0));
-    }
-}
-
-BENCHMARK(BM_BisectRight_Original)
+BENCHMARK(BM_BisectRight_InPlace)
     ->RangeMultiplier(2)
     ->Range(8, 8<<10);
 
-BENCHMARK(BM_BisectRight_Optimized_V2)
-    ->RangeMultiplier(2)
-    ->Range(8, 8<<10);
-
-BENCHMARK(BM_BisectRight_Optimized_V3)
-    ->RangeMultiplier(2)
-    ->Range(8, 8<<10);
-
-BENCHMARK(BM_BisectRight_Optimized_V4)
+BENCHMARK(BM_BisectLeft_InPlace)
     ->RangeMultiplier(2)
     ->Range(8, 8<<10);
 

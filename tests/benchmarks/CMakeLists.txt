@@ -1,3 +1,4 @@
 add_executable(composition_benchmark composition_benchmark.cpp)
-target_link_libraries(composition_benchmark PRIVATE benchmark::benchmark opentimelineio opentime)
+target_link_libraries(composition_benchmark PRIVATE opentimelineio benchmark::benchmark)
+target_compile_definitions(composition_benchmark PRIVATE OPENTIMELINEIO_TEST)
 target_include_directories(composition_benchmark PRIVATE ${CMAKE_SOURCE_DIR}/src) 

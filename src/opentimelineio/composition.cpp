@@ -493,7 +493,9 @@ Composition::child_at_time(
         [&range_map](Composable* child) {
             return range_map[child].end_time_exclusive();
         },
-        error_status);
+        error_status,
+        0,
+        std::nullopt);
     if (is_error(error_status))
     {
         return result;
@@ -506,7 +508,8 @@ Composition::child_at_time(
             return range_map[child].start_time();
         },
         error_status,
-        first_inside_range);
+        first_inside_range,
+        std::nullopt);
     if (is_error(error_status))
     {
         return result;
@@ -577,7 +580,9 @@ Composition::children_in_range(
         [&range_map](Composable* child) {
             return range_map[child].end_time_inclusive();
         },
-        error_status);
+        error_status,
+        0,
+        std::nullopt);
     if (is_error(error_status))
     {
         return children;
@@ -591,7 +596,8 @@ Composition::children_in_range(
             return range_map[child].start_time();
         },
         error_status,
-        first_inside_range);
+        first_inside_range,
+        std::nullopt);
     if (is_error(error_status))
     {
         return children;

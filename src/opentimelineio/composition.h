@@ -9,6 +9,10 @@
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
+#ifdef OPENTIMELINEIO_TEST
+class CompositionBenchmark;
+#endif
+
 class Composition : public Item
 {
 public:
@@ -26,6 +30,27 @@ public:
         AnyDictionary const&            metadata     = AnyDictionary(),
         std::vector<Effect*> const&     effects      = std::vector<Effect*>(),
         std::vector<Marker*> const&     markers      = std::vector<Marker*>());
+
+#ifdef OPENTIMELINEIO_TEST
+    // Test methods to expose internal functionality for benchmarking
+    int64_t test_bisect_right(
+        RationalTime const& tgt,
+        std::function<RationalTime(Composable*)> const& key_func,
+        ErrorStatus* error_status,
+        std::optional<int64_t> lower_search_bound = 0,
+        std::optional<int64_t> upper_search_bound = std::nullopt) const {
+        return _bisect_right(tgt, key_func, error_status, lower_search_bound, upper_search_bound);
+    }
+    
+    int64_t test_bisect_left(
+        RationalTime const& tgt,
+        std::function<RationalTime(Composable*)> const& key_func,
+        ErrorStatus* error_status,
+        std::optional<int64_t> lower_search_bound = 0,
+        std::optional<int64_t> upper_search_bound = std::nullopt) const {
+        return _bisect_left(tgt, key_func, error_status, lower_search_bound, upper_search_bound);
+    }
+#endif
 
     virtual std::string composition_kind() const;
 
@@ -117,6 +142,10 @@ public:
         bool                     shallow_search = false) const;
 
 protected:
+#ifdef OPENTIMELINEIO_TEST
+    friend class CompositionBenchmark;
+#endif
+
     virtual ~Composition();
 
     bool read_from(Reader&) override;
@@ -126,42 +155,24 @@ protected:
         Composable const* child,
         ErrorStatus*      error_status = nullptr) const;
 
+    int64_t _bisect_right(
+        RationalTime const&                             tgt,
+        std::function<RationalTime(Composable*)> const& key_func,
+        ErrorStatus*                                    error_status,
+        std::optional<int64_t>                          lower_search_bound,
+        std::optional<int64_t>                          upper_search_bound) const;
+
+    int64_t _bisect_left(
+        RationalTime const&                             tgt,
+        std::function<RationalTime(Composable*)> const& key_func,
+        ErrorStatus*                                    error_status,
+        std::optional<int64_t>                          lower_search_bound,
+        std::optional<int64_t>                          upper_search_bound) const;
+
 private:
     // XXX: python implementation is O(n^2) in number of children
     std::vector<Composable*>
     _children_at_time(RationalTime, ErrorStatus* error_status = nullptr) const;
-
-    // Return the index of the last item in seq such that all e in seq[:index]
-    // have key_func(e) <= tgt, and all e in seq[index:] have key_func(e) > tgt.
-    //
-    // Thus, seq.insert(index, value) will insert value after the rightmost item
-    // such that meets the above condition.
-    //
-    // lower_search_bound and upper_search_bound bound the slice to be searched.
-    //
-    // Assumes that seq is already sorted.
-    int64_t _bisect_right(
-        RationalTime const&                             tgt,
-        std::function<RationalTime(Composable*)> const& key_func,
-        ErrorStatus*                                    error_status = nullptr,
-        std::optional<int64_t> lower_search_bound = std::optional<int64_t>(0),
-        std::optional<int64_t> upper_search_bound = std::nullopt) const;
-
-    // Return the index of the last item in seq such that all e in seq[:index]
-    // have key_func(e) < tgt, and all e in seq[index:] have key_func(e) >= tgt.
-    //
-    // Thus, seq.insert(index, value) will insert value before the leftmost item
-    // such that meets the above condition.
-    //
-    // lower_search_bound and upper_search_bound bound the slice to be searched.
-    //
-    // Assumes that seq is already sorted.
-    int64_t _bisect_left(
-        RationalTime const&                             tgt,
-        std::function<RationalTime(Composable*)> const& key_func,
-        ErrorStatus*                                    error_status = nullptr,
-        std::optional<int64_t> lower_search_bound = std::optional<int64_t>(0),
-        std::optional<int64_t> upper_search_bound = std::nullopt) const;
 
     std::vector<Retainer<Composable>> _children;
 
