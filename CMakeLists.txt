@@ -41,6 +41,7 @@ option(OTIO_SHARED_LIBS          "Build shared if ON, static if OFF" ON)
 option(OTIO_CXX_COVERAGE         "Invoke code coverage if lcov/gcov is available" OFF)
 option(OTIO_CXX_EXAMPLES         "Build CXX examples (also requires OTIO_PYTHON_INSTALL=ON)" OFF)
 option(OTIO_AUTOMATIC_SUBMODULES "Fetch submodules automatically" ON)
+option(OTIO_ENABLE_BENCHMARKS    "Enable building benchmark targets" OFF)
 
 #------------------------------------------------------------------------------
 # Set option dependent variables
@@ -271,5 +272,11 @@ endif()
 
 if(OTIO_CXX_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+# Add Google Benchmark
+if(OTIO_ENABLE_BENCHMARKS)
+    find_package(benchmark REQUIRED)
+    add_subdirectory(tests/benchmarks)
 endif()
 

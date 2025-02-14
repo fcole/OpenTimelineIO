@@ -615,32 +615,35 @@ Composition::_bisect_right(
     std::optional<int64_t>                          lower_search_bound,
     std::optional<int64_t>                          upper_search_bound) const
 {
-    if (*lower_search_bound < 0)
-    {
-        if (error_status)
-        {
+    // Pre-calculate array size once
+    const int64_t array_size = _children.size();
+    
+    // Validate lower bound
+    if (*lower_search_bound < 0) {
+        if (error_status) {
             *error_status = ErrorStatus(
                 ErrorStatus::Outcome::INTERNAL_ERROR,
                 "lower_search_bound must be non-negative");
         }
         return 0;
     }
-    if (!upper_search_bound)
-    {
-        upper_search_bound = std::optional<int64_t>(_children.size());
-    }
-    int64_t midpoint_index = 0;
-    while (*lower_search_bound < *upper_search_bound)
-    {
-        midpoint_index = static_cast<int64_t>(
-            std::floor((*lower_search_bound + *upper_search_bound) / 2.0));
 
-        if (tgt < key_func(_children[midpoint_index]))
-        {
+    // Use array size if upper bound not provided
+    if (!upper_search_bound) {
+        upper_search_bound = array_size;
+    }
+
+    // Main binary search loop
+    while (*lower_search_bound < *upper_search_bound) {
+        // Calculate midpoint using bit shift instead of division
+        // Note: This is equivalent to (lower + upper) / 2
+        // but uses faster integer operations
+        int64_t midpoint_index = *lower_search_bound + ((*upper_search_bound - *lower_search_bound) >> 1);
+
+        if (tgt < key_func(_children[midpoint_index])) {
             upper_search_bound = midpoint_index;
         }
-        else
-        {
+        else {
             lower_search_bound = midpoint_index + 1;
         }
     }
